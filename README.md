@@ -1,71 +1,96 @@
-Quick Start
+# Quick Start
 
 Deploy a 3-instance cluster locally:
+
+```bash
 cd distribute-java-cluster && sh deploy.sh
+```
 
-This script will deploy three instances (example1, example2, example3) in distribute-java-cluster/env. It will also create a client directory for testing Raft cluster read/write functionality.
+This script will deploy three instances (`example1`, `example2`, `example3`) in  
+`distribute-java-cluster/env`. It will also create a `client` directory for testing  
+Raft cluster read/write functionality.
 
-Test Write Operation:
+### Test Write Operation
+
+```bash
 cd env/client
 ./bin/run_client.sh "list://127.0.0.1:8051,127.0.0.1:8052,127.0.0.1:8053" hello world
+```
 
-Test Read Operation:
+### Test Read Operation
+
+```bash
 ./bin/run_client.sh "list://127.0.0.1:8051,127.0.0.1:8052,127.0.0.1:8053" hello
+```
 
-Usage
+---
 
-Define Data Write/Read Interfaces:
-protobuf
+# Usage
+
+### Define Data Write/Read Interfaces
+
+**protobuf**
+
+```protobuf
 message SetRequest {
-string key = 1;
-string value = 2;
+    string key = 1;
+    string value = 2;
 }
 message SetResponse {
-bool success = 1;
+    bool success = 1;
 }
 message GetRequest {
-string key = 1;
+    string key = 1;
 }
 message GetResponse {
-string value = 1;
+    string value = 1;
 }
+```
 
-java
+**java**
+
+```java
 public interface ExampleService {
-Example.SetResponse set(Example.SetRequest request);
-Example.GetResponse get(Example.GetRequest request);
+    Example.SetResponse set(Example.SetRequest request);
+    Example.GetResponse get(Example.GetRequest request);
 }
+```
 
-Server Usage
+---
 
-Implement the StateMachine interface:
+# Server Usage
 
+### Implement the StateMachine Interface
+
+```java
 public interface StateMachine {
-/**
-* Write snapshot of state machine data.
-* Called periodically on each node.
-* @param snapshotDir snapshot output directory
-*/
-void writeSnap(String snapshotDir);
+    /**
+    * Write snapshot of state machine data.
+    * Called periodically on each node.
+    * @param snapshotDir snapshot output directory
+    */
+    void writeSnap(String snapshotDir);
 
-/**  
- * Load snapshot into the state machine.  
- * Called when a node starts.  
- * @param snapshotDir snapshot data directory  
- */  
-void readSnap(String snapshotDir);  
+    /**
+     * Load snapshot into the state machine.
+     * Called when a node starts.
+     * @param snapshotDir snapshot data directory
+     */
+    void readSnap(String snapshotDir);
 
-/**  
- * Apply data to the state machine.  
- * @param dataBytes binary data  
- */  
-void applyData(byte[] dataBytes);  
-
-
+    /**
+     * Apply data to the state machine.
+     * @param dataBytes binary data
+     */
+    void applyData(byte[] dataBytes);
 }
+```
 
-Implement Data Write and Read Logic:
+---
 
+### Implement Data Write and Read Logic
+
+```java
 // Members inside ExampleService implementation
 private RaftNode raftNode;
 private ExampleStateMachine stateMachine;
@@ -74,14 +99,18 @@ private ExampleStateMachine stateMachine;
 byte[] data = request.toByteArray();
 boolean success = raftNode.replicate(data, Raft.EntryType.ENTRY_TYPE_DATA);
 Example.SetResponse response = Example.SetResponse.newBuilder()
-.setSuccess(success)
-.build();
+    .setSuccess(success)
+    .build();
 
 // Read data logic
 Example.GetResponse response = stateMachine.get(request);
+```
 
-Server Startup:
+---
 
+### Server Startup
+
+```java
 // Initialize RPCServer
 RPCServer server = new RPCServer(localServer.getEndPoint().getPort());
 
@@ -111,3 +140,4 @@ server.registerService(exampleService);
 // Start services
 server.start();
 raftNode.init();
+```
